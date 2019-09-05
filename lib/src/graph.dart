@@ -2,14 +2,63 @@ import 'dart:collection';
 
 import 'package:collection/collection.dart';
 
+class Edge2 {
+  Edge2(this.y);
+  int y;
+  double weight;
+}
+
+class Graph2 {
+  final edges = List<Edge2>();
+  final degree = List<int>();
+  int numVertices;
+  int numEdges;
+  bool directed;
+
+  void insert(int x, int y) {
+    edges.insert(x, Edge2(y));
+    degree[x]++;
+    numEdges++;
+    if (directed == false) {
+      edges.insert(y, Edge2(x));
+      degree[y]++;
+      numEdges++;
+    }
+  }
+
+  void delete(int x, int y) {
+    edges.skip(x).where((edge) => edge.y == y).forEach((edge) {
+      edges.remove(edge);
+      degree[x]--;
+      numEdges--;
+      if (directed == false) {
+        edges.skip(y).where((edge) => edge.y == x).forEach((edge) {
+          edges.remove(edge);
+          degree[y]--;
+          numEdges--;
+        });
+      }
+    });
+  }
+
+  @override
+  String toString() {
+    final sb = StringBuffer();
+    for (int i = 1; i <= numVertices; i++) {
+      sb.write('$i: ');
+      for (int j = i; j < edges.length; j++) {
+        sb.write(' ${edges[j].y}');
+      }
+      sb.write('\n');
+    }
+    return sb.toString();
+  }
+}
+
 class Graph {
-  Graph({bool directed = false, this.stable = false})
-      : isDirected = directed,
-        _neighbors = stable
-            ? LinkedHashMap<Vertex, LinkedHashSet<Edge>>()
-            : HashMap<Vertex, HashSet<Edge>>() {
+  Graph({bool directed = false, this.stable = false}) : isDirected = directed {
     _root = Vertex._(this);
-    _neighbors[_root] = {};
+    _adjacencyList.add(Edge._());
   }
 
   /// Whether this is a directed graph where edges are uni-directional.
@@ -22,7 +71,7 @@ class Graph {
   final bool stable;
 
   /// The adjacency list representing vertices and edges in this graph.
-  final Map<Vertex, Set<Edge>> _neighbors;
+  final _adjacencyList = List<Edge>();
 
   int __nextVertexId = -1;
   int _nextVertexId() => ++__nextVertexId;
@@ -112,8 +161,8 @@ class Vertex {
     return false;
   }
 
-  ///
-  void insertEdge(Vertex start, {Vertex end, double weight = 0}) {}
+  /// Insert
+  void insertAfter(Vertex start, {Vertex end, double weight = 0}) {}
 
   /// Removing this node would disconnect the graph (aka an "articulation vertex").
   bool isCutNode() {}
