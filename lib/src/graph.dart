@@ -88,17 +88,24 @@ class Graph<T> {
   }
 
   /// Attempt to remove the edge between [from] and [to] with weight [weight].
+  /// If [weight] is null, all edges between [from] and [to] will be removed.
   ///
-  /// This is O(1), for singley connected graphs. For multigraphs the compexity
-  /// is O(log(#weights)).
-  bool removeEdge(T from, T to, [double weight = 0]) =>
+  /// This is O(1), for singley connected graphs or when [weight] is null.
+  /// For multigraphs the time is O(log(#weights)).
+  bool removeEdge(T from, T to, [double weight]) =>
       _removeEdge(from, to, weight, isDirected);
 
   bool _removeEdge(T from, T to, double weight, bool directed) {
     if (hasEdge(from, to, weight)) {
-      _nodes[from][to].remove(weight);
+      int len = 1;
+      if (weight == null) {
+        len = _nodes[from][to].length;
+        _nodes[from][to].clear();
+      } else {
+        _nodes[from][to].remove(weight);
+      }
       if (directed) {
-        _numEdges--;
+        _numEdges -= len;
       } else {
         _removeEdge(to, from, weight, true);
       }
