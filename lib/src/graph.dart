@@ -5,7 +5,7 @@ import 'dart:collection';
 /// When the graph is constructed creates the [root] [Node] with no edges.
 ///
 /// Multigraphs, multiple edges between two nodes, are allowed if a != b for
-/// edges a and b. Pseudographs, where an edge connects a node to itself in a
+/// weights a and b. Pseudographs, where an edge connects a node to itself in a
 /// loop, are also allowed under the same restriction as multigraphs.
 /// Hypergraphs are not supported.
 ///
@@ -20,10 +20,10 @@ class Graph<T> {
         isDirected = directed;
 
   /// Map each vertex to its neighbors, including a set of unique edge weights.
-  final _nodes = Map<T, Map<T, Set<double>>>();
+  final _nodes = Map<T, Map<T, SplayTreeSet<double>>>();
   Iterable<T> get nodes => _nodes.keys;
 
-  Iterable<MapEntry<T, Set<double>>> edges(T node) => _nodes[node].entries;
+  MapView<T, Set<double>> edges(T node) => MapView(_nodes[node]);
 
   /// The total number of edges in the graph.
   int get numEdges => _numEdges;
@@ -40,6 +40,9 @@ class Graph<T> {
 
   /// If [weight] is null, this will return true if there are any edges between
   /// [from] and [to].
+  ///
+  /// This is constant time, O(1), when weight is `null` or for singley
+  /// connected graphs. For multigraphs the compexity is O(log(#weights)).
   bool hasEdge(T from, T to, [double weight]) {
     assert(from != null && to != null);
     if (hasNode(from)) {
@@ -62,6 +65,9 @@ class Graph<T> {
 
   /// Add an edge between two nodes. If the nodes do not already exist in the
   /// graph, they will be added.
+  ///
+  /// This is O(1), for singley connected graphs. For multigraphs the compexity
+  /// is O(log(#weights)).
   bool addEdge(T from, T to, [double weight = 0]) =>
       _addEdge(from, to, weight, isDirected);
 
@@ -69,7 +75,7 @@ class Graph<T> {
     if (!hasEdge(from, to, weight)) {
       addNode(from);
       addNode(to);
-      _nodes[from][to] ??= {};
+      _nodes[from][to] ??= SplayTreeSet();
       _nodes[from][to].add(weight);
       if (directed) {
         _numEdges++;
@@ -82,6 +88,9 @@ class Graph<T> {
   }
 
   /// Attempt to remove the edge between [from] and [to] with weight [weight].
+  ///
+  /// This is O(1), for singley connected graphs. For multigraphs the compexity
+  /// is O(log(#weights)).
   bool removeEdge(T from, T to, [double weight = 0]) =>
       _removeEdge(from, to, weight, isDirected);
 
