@@ -2,52 +2,28 @@ import 'package:graph/graph.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('Graph performance tests.', () {
-    setUp(() {
-      print('Create an IntGraph with 10000 nodes');
-      final g = IntGraph();
-      for (int i = 0; i < 10000; i++){
-
-      }
+  group('Graph traversal.', () {
+    test('BFS', () {
+      final g = Graph<int>()
+        ..addEdge(0, 1)
+        ..addEdge(0, 2)
+        ..addEdge(0, 3)
+        ..addEdge(1, 4)
+        ..addEdge(3, 7)
+        ..addEdge(3, 5)
+        ..addEdge(1, 2);
+      expect(g.breadthFirstSearch(), [0, 1, 2, 3, 4, 7, 5]);
     });
-
-    test('Create an IntGraph with 10000 nodes', () {
-      expect(awesome.isAwesome, isTrue);
+    test('DFS', () {
+      final g = Graph<int>()
+        ..addEdge(0, 1)
+        ..addEdge(0, 2)
+        ..addEdge(0, 3)
+        ..addEdge(1, 4)
+        ..addEdge(3, 7)
+        ..addEdge(3, 5)
+        ..addEdge(1, 2);
+      expect(g.depthFirstSearch(), [0, 1, 4, 2, 3, 7, 5]);
     });
   });
-}
-
-testFinal(int loops) {
-  print('perf testing final vs var on $loops loops.');
-  final sw = Stopwatch()..start();
-  for (int i = 0; i < loops; i++) {
-    var x = i;
-  }
-  sw.stop();
-  final time1 = sw.elapsedMicroseconds;
-  sw
-    ..reset
-    ..start();
-  for (int i = 0; i < loops; i++) {
-    final x = i;
-  }
-  final time2 = sw.elapsedMicroseconds;
-  final diff = time2 - time1;
-  final faster = diff > 0 ? 'var' : 'final';
-  print('var: $time1, final: $time2.');
-  print('$faster is faster ($diff us (${(diff / time1).round()} %).');
-}
-
-class ConstructorPerf {
-  ConstructorPerf();
-  const ConstructorPerf.constant();
-}
-
-class HashcodePerf {
-  HashcodePerf() : this.id(_nextId);
-  const HashcodePerf.id(this.id);
-  final int id;
-
-  static int __nextId = -1;
-  static int get _nextId => __nextId++;
 }

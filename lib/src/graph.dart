@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 /// A weighted/unweighted, directed/undirected [graph](https://en.wikipedia.org/wiki/Graph_theory).
 ///
 /// When the graph is constructed creates the [root] [Node] with no edges.
@@ -97,13 +99,13 @@ class Graph<T> {
   }
 
   @override
-  String toString([bool withWeights = false]) {
+  String toString({bool showWeights = false}) {
     final sb = StringBuffer();
     _nodes.forEach((node, edges) {
       sb.write('$node: ');
       edges.forEach((neighbor, weights) {
         sb.write(neighbor);
-        if (withWeights) {
+        if (showWeights) {
           sb.write(' (${weights.join(',')})');
         }
         sb.write(', ');
@@ -124,10 +126,34 @@ class Graph<T> {
 
   /// Removing this edge would disconnect the graph.
   bool isBridge(T from, T to, [double weight = 0]) {}
-}
 
-class IntGraph extends Graph<int> {
-  IntGraph({bool directed = false}) : super(directed: directed);
+  Iterable<T> depthFirstSearch([T node]) => _dfs(node ?? _nodes.keys.first, {});
+
+  Iterable<T> _dfs(T node, Map<T, bool> visited) {
+    visited[node] = true;
+    _nodes[node].forEach((neighbor, weights) {
+      if (!visited.containsKey(neighbor)) {
+        _dfs(neighbor, visited);
+      }
+    });
+    return visited.keys;
+  }
+
+  Iterable<T> breadthFirstSearch([T node]) {
+    node ??= _nodes.keys.first;
+    final queue = Queue<T>()..add(node);
+    final visited = <T, bool>{node: true};
+    while (queue.isNotEmpty) {
+      node = queue.removeFirst();
+      _nodes[node].forEach((neighbor, weights) {
+        if (!visited.containsKey(neighbor)) {
+          visited[neighbor] = true;
+          queue.add(neighbor);
+        }
+      });
+    }
+    return visited.keys;
+  }
 }
 
 enum NodeState {

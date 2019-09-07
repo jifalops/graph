@@ -2,12 +2,12 @@ import 'package:benchmark_harness/benchmark_harness.dart';
 import 'package:graph/graph.dart';
 
 // Create a new benchmark by extending BenchmarkBase
-class IntGraphBenchmark extends BenchmarkBase {
-  IntGraphBenchmark() : super("IntGraph");
-  final graph = IntGraph();
+class GraphBenchmark extends BenchmarkBase {
+  GraphBenchmark() : super("IntGraph");
+  final graph = Graph<int>();
 
   static void main() {
-    IntGraphBenchmark().report();
+    GraphBenchmark().report();
   }
 
   // The benchmark code.
@@ -25,5 +25,5 @@ class IntGraphBenchmark extends BenchmarkBase {
 }
 
 main() {
-  IntGraphBenchmark.main();
+  GraphBenchmark.main();
 }
