@@ -2,16 +2,20 @@ import 'package:graph/graph.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('Dart performance tests.', () {
+  group('Graph performance tests.', () {
     setUp(() {
+      print('Create an IntGraph with 10000 nodes');
+      final g = IntGraph();
+      for (int i = 0; i < 10000; i++){
+
+      }
     });
 
-    test('ConstructorPerf', () {
+    test('Create an IntGraph with 10000 nodes', () {
       expect(awesome.isAwesome, isTrue);
     });
   });
 }
-
 
 testFinal(int loops) {
   print('perf testing final vs var on $loops loops.');

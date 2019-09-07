@@ -97,15 +97,19 @@ class Graph<T> {
   }
 
   @override
-  String toString() {
+  String toString([bool withWeights = false]) {
     final sb = StringBuffer();
     _nodes.forEach((node, edges) {
       sb.write('$node: ');
       edges.forEach((neighbor, weights) {
-        sb.write('$neighbor (${weights.join(',')})');
+        sb.write(neighbor);
+        if (withWeights) {
+          sb.write(' (${weights.join(',')})');
+        }
+        sb.write(', ');
       });
+      sb.write('\n');
     });
-    sb.write('\n');
     return sb.toString();
   }
 
@@ -120,6 +124,10 @@ class Graph<T> {
 
   /// Removing this edge would disconnect the graph.
   bool isBridge(T from, T to, [double weight = 0]) {}
+}
+
+class IntGraph extends Graph<int> {
+  IntGraph({bool directed = false}) : super(directed: directed);
 }
 
 enum NodeState {
