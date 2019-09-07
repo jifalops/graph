@@ -1,95 +1,112 @@
-import 'dart:collection';
+/// A weighted/unweighted, directed/undirected [graph](https://en.wikipedia.org/wiki/Graph_theory).
+///
+/// When the graph is constructed creates the [root] [Node] with no edges.
+///
+/// Multigraphs, multiple edges between two nodes, are allowed if a != b for
+/// edges a and b. Pseudographs, where an edge connects a node to itself in a
+/// loop, are also allowed under the same restriction as multigraphs.
+/// Hypergraphs are not supported.
+///
+/// The generic type [T] corresponds to the value that identifies a node in the
+/// graph. The graph is performant when [T] has performant `operator==()` and
+/// `hashCode` implementations.
+///
+/// All operations are in (amortized) constant time, O(1), unless otherwise noted.
+class Graph<T> {
+  Graph({bool directed = false})
+      : assert(directed != null),
+        isDirected = directed;
 
-import 'package:collection/collection.dart';
+  /// Map each vertex to its neighbors, including a set of unique edge weights.
+  final _nodes = Map<T, Map<T, Set<double>>>();
+  Iterable<T> get nodes => _nodes.keys;
 
-class Edge2 {
-  Edge2(this.y);
-  int y;
-  double weight;
-}
+  Iterable<MapEntry<T, Set<double>>> edges(T node) => _nodes[node].entries;
 
-class Graph2 {
-  final edges = List<Edge2>();
-  final degree = List<int>();
-  int numVertices;
-  int numEdges;
-  bool directed;
+  /// The total number of edges in the graph.
+  int get numEdges => _numEdges;
+  int _numEdges = 0;
 
-  void insert(int x, int y) {
-    edges.insert(x, Edge2(y));
-    degree[x]++;
-    numEdges++;
-    if (directed == false) {
-      edges.insert(y, Edge2(x));
-      degree[y]++;
-      numEdges++;
-    }
-  }
-
-  void delete(int x, int y) {
-    edges.skip(x).where((edge) => edge.y == y).forEach((edge) {
-      edges.remove(edge);
-      degree[x]--;
-      numEdges--;
-      if (directed == false) {
-        edges.skip(y).where((edge) => edge.y == x).forEach((edge) {
-          edges.remove(edge);
-          degree[y]--;
-          numEdges--;
-        });
-      }
-    });
-  }
-
-  @override
-  String toString() {
-    final sb = StringBuffer();
-    for (int i = 1; i <= numVertices; i++) {
-      sb.write('$i: ');
-      for (int j = i; j < edges.length; j++) {
-        sb.write(' ${edges[j].y}');
-      }
-      sb.write('\n');
-    }
-    return sb.toString();
-  }
-}
-
-class Graph {
-  Graph({bool directed = false, this.stable = false}) : isDirected = directed {
-    _root = Vertex._(this);
-    _adjacencyList.add(Edge._());
-  }
+  /// The total number of nodes in the graph.
+  int get numNodes => _nodes.length;
 
   /// Whether this is a directed graph where edges are uni-directional.
   final bool isDirected;
   bool get isUndirected => !isDirected;
 
-  /// When stable, iterating through vertices and edges will keep the order they
-  /// were inserted in. There is a small performance benefit in using unstable
-  /// maps and sets.
-  final bool stable;
+  bool hasNode(T node) => _nodes.containsKey(node);
 
-  /// The adjacency list representing vertices and edges in this graph.
-  final _adjacencyList = List<Edge>();
+  /// If [weight] is null, this will return true if there are any edges between
+  /// [from] and [to].
+  bool hasEdge(T from, T to, [double weight]) {
+    assert(from != null && to != null);
+    if (hasNode(from)) {
+      final weights = _nodes[from][to];
+      return weight == null
+          ? weights?.isNotEmpty ?? false
+          : weights?.contains(weight) ?? false;
+    }
+    return false;
+  }
 
-  int __nextVertexId = -1;
-  int _nextVertexId() => ++__nextVertexId;
+  /// Add a node without requiring an edge.
+  bool addNode(T node) {
+    if (!hasNode(node)) {
+      _nodes[node] = {};
+      return true;
+    }
+    return false;
+  }
 
-  int get numVertices => _neighbors.length;
-  int get numEdges => _numEdges;
-  int _numEdges = 0;
+  /// Add an edge between two nodes. If the nodes do not already exist in the
+  /// graph, they will be added.
+  bool addEdge(T from, T to, [double weight = 0]) =>
+      _addEdge(from, to, weight, isDirected);
 
-  Vertex get root => _root;
-  Vertex _root;
+  bool _addEdge(T from, T to, double weight, bool directed) {
+    if (!hasEdge(from, to, weight)) {
+      addNode(from);
+      addNode(to);
+      _nodes[from][to] ??= {};
+      _nodes[from][to].add(weight);
+      if (directed) {
+        _numEdges++;
+      } else {
+        _addEdge(to, from, weight, true);
+      }
+      return true;
+    }
+    return false;
+  }
 
-  Set<Vertex> get vertices => UnmodifiableSetView(_vertices);
-  Set<Vertex> get _vertices => _neighbors.keys;
+  /// Attempt to remove the edge between [from] and [to] with weight [weight].
+  bool removeEdge(T from, T to, [double weight = 0]) =>
+      _removeEdge(from, to, weight, isDirected);
 
-  bool contains(Vertex vertex) {
-    assert(vertex != null);
-    assert(_neighbors.containsKey(vertex) || vertex._graph != this);
-    return vertex._graph == this;
+  bool _removeEdge(T from, T to, double weight, bool directed) {
+    if (hasEdge(from, to, weight)) {
+      _nodes[from][to].remove(weight);
+      if (directed) {
+        _numEdges--;
+      } else {
+        _removeEdge(to, from, weight, true);
+      }
+      return true;
+    }
+    return false;
+  }
+
+  @override
+  String toString() {
+    final sb = StringBuffer();
+    _nodes.forEach((node, edges) {
+      sb.write('$node: ');
+      edges.forEach((neighbor, weights) {
+        sb.write('$neighbor (${weights.join(',')})');
+      });
+    });
+    sb.write('\n');
+    return sb.toString();
   }
 
   /// True if this graph does not contain any cut-nodes ([Node.isCutNode]).
@@ -97,113 +114,15 @@ class Graph {
 
   /// True for graphs where every node is connected to every other node.
   bool isStronglyConnected() {}
-}
-
-class Vertex {
-  Vertex._(this._graph) : id = _graph._nextVertexId();
-
-  final Graph _graph;
-  final int id;
-
-  VertexState get state => _state;
-  VertexState _state = VertexState.undiscovered;
-
-  Set<Edge> get edges => UnmodifiableSetView(_edges);
-  Set<Edge> get _edges => _graph._neighbors[this];
-
-  /// Out-degree, the nuber of edges that use this vertex as a start.
-  int get degree => _edges.length;
-
-  bool hasEdge(Edge edge) => _edges.contains(edge);
-
-  /// Whether there is an edge that starts here and ends at [other].
-  ///
-  /// O(edges)
-  Edge findEdge(Vertex other) {
-    for (Edge e in _edges) {
-      if (e.end == other) return e;
-    }
-    return null;
-  }
-
-  /// Returns [end] or the new vertex created if [end] is null, or null if the
-  /// edge already exists.
-  Vertex addEdge({Vertex end, double weight = 0}) {
-    assert(weight != null);
-    end ??= Vertex._(_graph);
-    final edge = Edge._(_graph, this, end);
-    if (_edges.add(edge)) {
-      _graph._numEdges++;
-      if (_graph.isUndirected) {
-        final reverse = edge._reverse();
-        assert(!end.hasEdge(reverse));
-        end._edges.add(reverse);
-        _graph._numEdges++;
-      }
-      return end;
-    }
-    return null;
-  }
-
-  /// One of [end] or [edge] must be given. If [end] is given, [findEdge()] will
-  /// be called, resulting in O(edge) complexity. However, removing an [edge]
-  /// can be done in constant time.
-  bool removeEdge({Vertex end, Edge edge}) {
-    assert(end != null || edge != null);
-    edge ??= findEdge(end);
-    if (_edges.remove(edge)) {
-      _graph._numEdges--;
-      if (_graph.isUndirected && edge.end._edges.remove(edge._reverse())) {
-        _graph._numEdges--;
-      }
-      return true;
-    }
-    return false;
-  }
-
-  /// Insert
-  void insertAfter(Vertex start, {Vertex end, double weight = 0}) {}
 
   /// Removing this node would disconnect the graph (aka an "articulation vertex").
-  bool isCutNode() {}
-
-  @override
-  operator ==(o) =>
-      o.runtimeType == runtimeType && o._graph == _graph && o.id == id;
-  @override
-  int get hashCode => _graph.hashCode ^ id;
-}
-
-class Edge {
-  Edge._(this._graph, this.start, this.end, {this.weight = 0});
-
-  final Graph _graph;
-
-  final Vertex start;
-  final Vertex end;
-
-  /// The edge weight in a weighted graph.
-  final double weight;
+  bool isCutNode(T node) {}
 
   /// Removing this edge would disconnect the graph.
-  bool isBridge() {}
-
-  /// An edge with [start] and [end] reversed. Useful for checking for mirrored
-  /// edges in undirected graphs.
-  Edge _reverse() => Edge._(_graph, end, start, weight: weight);
-
-  @override
-  operator ==(o) =>
-      o.runtimeType == runtimeType &&
-      o._graph == _graph &&
-      o.start.id == start.id &&
-      o.end.id == end.id &&
-      o.weight == weight;
-  @override
-  int get hashCode => _graph.hashCode ^ start.id ^ end.id ^ weight.hashCode;
+  bool isBridge(T from, T to, [double weight = 0]) {}
 }
 
-enum VertexState {
+enum NodeState {
   /// The initial state.
   undiscovered,
 
@@ -225,4 +144,5 @@ enum TraversalOrder {
   postOrder,
 }
 
-enum DepthFirstSearchEdgeType { tree, back, cross, forward }
+/// Edge types in depth-first search.
+enum DfsEdgeType { tree, back, cross, forward }
