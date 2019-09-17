@@ -3,7 +3,7 @@ import 'package:graph/graph.dart';
 
 // Create a new benchmark by extending BenchmarkBase
 class GraphBenchmark extends BenchmarkBase {
-  GraphBenchmark() : super("IntGraph");
+  GraphBenchmark() : super("Graph<int>");
   final graph = Graph<int>();
 
   static void main() {

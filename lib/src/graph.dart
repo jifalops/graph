@@ -154,6 +154,8 @@ class Graph<T> {
   /// first node added to the graph will be used. If [processNode] and
   /// [processNodeLate] are omitted, the search will end when every node
   /// reachable from [start] has been processed.
+  ///
+  /// O(n+m); n: numNodes, m: numEdges.
   Iterable<T> breadthFirstSearch(
       {T start,
 
@@ -175,11 +177,12 @@ class Graph<T> {
       T node = queue.removeFirst();
       processed.add(node);
       if (processNode != null && processNode(node)) {
-        final path = [node];
-        while ((node = parent[node]) != null) {
-          path.add(node);
-        }
-        return path.reversed;
+        // final path = [node];
+        // while ((node = parent[node]) != null) {
+        //   path.add(node);
+        // }
+        // return path.reversed;
+        return processed;
       }
 
       _nodes[node].forEach((neighbor, weight) {
@@ -193,25 +196,113 @@ class Graph<T> {
         }
       });
       if (processNodeLate != null && processNodeLate(node)) {
-        final path = [node];
-        while ((node = parent[node]) != null) {
-          path.add(node);
-        }
-        return path.reversed;
+        // final path = [node];
+        // while ((node = parent[node]) != null) {
+        //   path.add(node);
+        // }
+        // return path.reversed;
+        return processed;
       }
     }
     return processed;
   }
+
+  /// If certain areas of the graph are unreachable from others, this will find
+  /// each individual set of connected nodes.
+  ///
+  /// O(2n+m)
+  Iterable<Iterable<T>> connectedComponents() {
+    final connected = List<Iterable<T>>();
+    final discovered = Set<T>();
+    _nodes.keys.forEach((node) {
+      if (!discovered.contains(node)) {
+        discovered.add(node);
+        connected.add(breadthFirstSearch(
+            start: node,
+            processEdge: (from, to, weight) => discovered.add(to)));
+      }
+    });
+    return connected;
+  }
+
+  /// Try to two-color the graph. A graph is bipartite if each node can be one
+  /// of two colors while all of its neighbors are the other color.
+  ///
+  /// One area of use (of many) is for scheduling problems.
+  TwoColorResult<T> twoColor() {
+    final color = Map<T, bool>();
+    bool bipartite = true;
+
+    bool complement(bool b) => b == null ? null : !b;
+
+    _nodes.keys.forEach((node) {
+      if (!color.containsKey(node)) {
+        color[node] = false;
+        breadthFirstSearch(
+            start: node,
+            processEdge: (from, to, weight) {
+              if (color[from] == color[to] && color[from] != null) {
+                bipartite = false;
+              }
+              color[to] = complement(color[from]);
+            });
+      }
+    });
+    return TwoColorResult._(bipartite, color);
+  }
+}
+
+class TwoColorResult<T> {
+  TwoColorResult._(this.isBipartite, this.color);
+  final bool isBipartite;
+  final Map<T, bool> color;
+}
+
+class SearchHandler<T> {
+  SearchHandler({this.processNode, this.processEdge, this.processNodeLate});
+
+  /// Called when a node is visited. Return `true` to end the search.
+  final NodeProcessor<T> processNode;
+
+  /// Called after a node has been visited and all of its edges have been
+  /// processed. Return `true` to end the search.
+  final NodeProcessor<T> processNodeLate;
+
+  /// Called for each outgoing edge on a node after processing that node.
+  final EdgeProcessor<T> processEdge;
+
+  /// All of its edges have been visited.
+  final _processed = Set<T>();
+
+  /// Maps a node to the node that discovered it. The search root has a key in
+  /// the map that points to `null`.
+  final _parent = Map<T, T>();
+
+  /// True when a node has been found but not fully processed.
+  bool isDiscovered(T node) => _parent.containsKey(node);
+
+  /// The initial state of a node, it has never been seen before.
+  bool isNotDiscovered(T node) => !_parent.containsKey(node);
+  bool isProcessed(T node) => _processed.contains(node);
+  bool isNotProcessed(T node) => !_processed.contains(node);
+
+  /// Returns the nodes on the path to [node] by following its parents. If [node]
+  /// hasn't been discovered, an empty list is returned.
+  Iterable<T> pathTo(T node) {
+    if (isNotDiscovered(node)) return [];
+    final path = [node];
+    while ((node = _parent[node]) != null) {
+      path.add(node);
+    }
+    return path.reversed;
+  }
 }
 
 enum NodeState {
-  /// The initial state.
   undiscovered,
 
-  /// Found but not fully processed.
   discovered,
 
-  /// All edges have been visited.
   processed,
 }
 
