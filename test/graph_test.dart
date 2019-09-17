@@ -12,7 +12,7 @@ void main() {
         ..addEdge(3, 7)
         ..addEdge(3, 5)
         ..addEdge(1, 2);
-      expect(g.breadthFirstSearch(), [0, 1, 2, 3, 4, 7, 5]);
+      expect(g.breadthFirstSearch().visitedNodes, [0, 1, 2, 3, 4, 7, 5]);
     });
 
     test('BFS with goal', () {
@@ -24,7 +24,7 @@ void main() {
         ..addEdge(1, 4)
         ..addEdge(3, 7)
         ..addEdge(3, 5);
-      expect(g.breadthFirstSearch(processNode: (node) => node == 4),
+      expect(g.breadthFirstSearch(visit: (node) => node == 4).visitedNodes,
           [0, 1, 2, 3, 4]);
     });
 
