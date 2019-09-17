@@ -85,7 +85,7 @@ void main() {
         ..addEdge(3, 7)
         ..addEdge(3, 5)
         ..addEdge(1, 2);
-      expect(g.depthFirstSearch(), [0, 1, 4, 2, 3, 7, 5]);
+      expect(g.depthFirstSearch().visitedNodes, [0, 1, 4, 2, 3, 7, 5]);
     });
   });
 }

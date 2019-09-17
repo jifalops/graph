@@ -1,4 +1,7 @@
 import 'dart:collection';
+import 'package:collection/collection.dart';
+
+part 'search_data.dart';
 
 /// A [graph](https://en.wikipedia.org/wiki/Graph_theory) that can be
 /// weighted/unweighted and directed/undirected.
@@ -137,16 +140,106 @@ class Graph<T> {
   /// Removing this edge would disconnect the graph.
   bool isBridge(T from, T to, [double weight = 0]) {}
 
-  Iterable<T> depthFirstSearch([T node]) => _dfs(node ?? _nodes.keys.first, {});
+  DfsSearchData<T> depthFirstSearch(
+          {T start,
 
-  Iterable<T> _dfs(T node, Set<T> visited) {
-    visited.add(node);
-    _nodes[node].forEach((neighbor, weights) {
-      if (!visited.contains(neighbor)) {
-        _dfs(neighbor, visited);
+          /// Return `true` to end the search.
+          NodeProcessor<T> visit,
+
+          /// Return `true` to end the search.
+          NodeProcessor<T> afterVisit,
+
+          /// Happens after [visit] but before [afterVisit], when processing a
+          /// node's edges.
+          EdgeProcessor<T> discoveredNeighbor}) =>
+      _dfs(start ??= _nodes.keys.first, DfsSearchData<T>._(start), visit,
+          afterVisit, discoveredNeighbor);
+  //   start ??= _nodes.keys.first;
+  //   final data = DfsSearchData._(start);
+  //   final queue = Queue<T>()..add(start);
+
+  //   bool processEarly(T node) {
+  //     data._processed.add(node);
+  //     return visit != null && visit(node);
+  //   }
+
+  //   bool processEdge(T from, T to, double w) {
+  //     data._parents[to] = _DiscoveredEdgeData(from, w);
+  //     return discoveredNeighbor != null && discoveredNeighbor(from, to, w);
+  //   }
+
+  //   bool processLate(T node) {
+  //     return afterVisit == null ? false : afterVisit(node);
+  //   }
+
+  //   while (queue.isNotEmpty) {
+  //     T node = queue.removeLast();
+  //     if (processEarly(node)) return data;
+  //     for (T neighbor in _nodes[node].keys) {
+  //       if (data.isNotDiscovered(neighbor)) {
+  //         if (processEdge(node, neighbor, _nodes[node][neighbor])) {
+  //           // data._finished = true;
+  //           return data;
+  //         }
+  //         // _dfs(neighbor, data, visit, afterVisit, discoveredNeighbor);
+  //       } else if (data.isNotProcessed(neighbor) || isDirected) {
+  //         if (processEdge(node, neighbor, _nodes[node][neighbor])) {
+  //           // data._finished = true;
+  //           return data;
+  //         }
+  //       }
+  //     }
+  //     if (processLate(node)) return data;
+  //   }
+  //   return data;
+  // }
+
+  DfsSearchData<T> _dfs(T node, DfsSearchData<T> data, NodeProcessor<T> visit,
+      NodeProcessor<T> afterVisit, EdgeProcessor<T> discoveredNeighbor) {
+    if (data._finished) return data;
+
+    bool processEarly(T node) {
+      data._processed.add(node);
+      return visit != null && visit(node);
+    }
+
+    bool processEdge(T from, T to, double w) {
+      data._parents[to] = _DiscoveredEdgeData(from, w);
+      return discoveredNeighbor != null && discoveredNeighbor(from, to, w);
+    }
+
+    bool processLate(T node) {
+      return afterVisit == null ? false : afterVisit(node);
+    }
+
+    data.time++;
+    data.entryTime[node] = data.time;
+
+    if (processEarly(node)) ;
+    for (T neighbor in _nodes[node].keys) {
+      if (data.isNotDiscovered(neighbor)) {
+        if (processEdge(node, neighbor, _nodes[node][neighbor])) {
+          data._finished = true;
+          return data;
+        }
+        _dfs(neighbor, data, visit, afterVisit, discoveredNeighbor);
+      } else if (data.isNotProcessed(neighbor) || isDirected) {
+        if (processEdge(node, neighbor, _nodes[node][neighbor])) {
+          data._finished = true;
+          return data;
+        }
       }
-    });
-    return visited;
+      if (data._finished) return data;
+    }
+
+    data.time++;
+    data.exitTime[node] = data.time;
+
+    processLate(node);
+
+    data._processed.add(node);
+
+    return data;
   }
 
   /// BFS finds the shortest path from the [start] node to the node where
@@ -156,7 +249,7 @@ class Graph<T> {
   /// reachable from [start] has been processed.
   ///
   /// O(n+m); n: numNodes, m: numEdges.
-  SearchData<T> breadthFirstSearch(
+  BfsSearchData<T> breadthFirstSearch(
       {T start,
 
       /// Return `true` to end the search.
@@ -169,7 +262,7 @@ class Graph<T> {
       /// node's edges.
       EdgeProcessor<T> discoveredNeighbor}) {
     start ??= _nodes.keys.first;
-    final data = SearchData._(start);
+    final data = BfsSearchData._(start);
     final queue = Queue<T>()..add(start);
 
     bool processEarly(T node) {
@@ -187,7 +280,7 @@ class Graph<T> {
           discoveredNeighbor(from, to, w);
     }
 
-    bool processLate(T node) => afterVisit == null ? false : afterVisit(node);
+    bool processLate(T node) => afterVisit != null && afterVisit(node);
 
     while (queue.isNotEmpty) {
       T node = queue.removeFirst();
@@ -216,7 +309,6 @@ class Graph<T> {
               discovered.add(to);
               return false;
             });
-        print(data._processed);
         connected.add(data._processed);
       }
     });
@@ -230,6 +322,8 @@ class Graph<T> {
   /// and if [haltOnFailure] is true, the coloring will be stopped.
   ///
   /// One area of use (of many) is for scheduling problems.
+  ///
+  /// O(n+m)
   TwoColorData<T> twoColor({bool haltOnFailure = false}) {
     final data = TwoColorData<T>._();
     void color(T node, bool color) => data._colors[node] = color;
@@ -254,84 +348,6 @@ class Graph<T> {
     }
     return data;
   }
-}
-
-class TwoColorData<T> {
-  TwoColorData._();
-
-  SearchData<T> get bfs => _bfs;
-  SearchData<T> _bfs;
-
-  final _colors = Map<T, bool>();
-
-  bool get isBipartite => _isBipartite;
-  bool get isNotBipartite => !_isBipartite;
-  bool _isBipartite = true;
-
-  bool isColored(T node) => _colors.containsKey(node);
-  bool isNotColored(T node) => !isColored(node);
-
-  /// May return `null`.
-  bool colorOf(T node) => _colors[node];
-
-  bool haveSameColor(T node1, T node2) =>
-      _colors[node1] == _colors[node2] && _colors[node1] != null;
-}
-
-class SearchData<T> {
-  SearchData._(this.root) : _parents = {root: null};
-
-  final T root;
-  T get start => root;
-
-  /// A node is processed when all of its edges have been visited.
-  final _processed = LinkedHashSet<T>();
-
-  /// Maps a node to the node that discovered it. The search root has a key in
-  /// the map that points to `null`.
-  final Map<T, _DiscoveredEdgeData> _parents;
-
-  /// The last processed node, often the "goal" node.
-  T get end => goal;
-  T get goal => _processed.last;
-
-  Iterable<T> get discoveredNodes => _parents.keys;
-  Iterable<T> get visitedNodes => _processed;
-
-  /// The discoverer of [node] during traveral.
-  T parentOf(T node) => _parents[node]?.parent;
-
-  /// The weight of the edge that discovered [node].
-  double costOf(T node) => _parents[node]?.weight ?? 0;
-
-  /// True when a node has been found but not fully processed.
-  bool isDiscovered(T node) => _parents.containsKey(node);
-
-  /// The initial state of a node, it has never been seen before.
-  bool isNotDiscovered(T node) => !_parents.containsKey(node);
-  bool isProcessed(T node) => _processed.contains(node);
-  bool isNotProcessed(T node) => !_processed.contains(node);
-
-  /// Finds the nodes on the path to [node] by following its ancestors up the
-  /// tree of discovery. If [node] hasn't been discovered, an empty list is
-  /// returned.
-  Iterable<T> pathTo(T node) {
-    if (isNotDiscovered(node)) return [];
-    final path = [node];
-    while ((node = parentOf(node)) != null) {
-      path.add(node);
-    }
-    return path.reversed;
-  }
-
-  Iterable<T> get pathToGoal => _pathToGoal ??= pathTo(goal);
-  Iterable<T> _pathToGoal;
-}
-
-class _DiscoveredEdgeData<T> {
-  const _DiscoveredEdgeData(this.parent, this.weight);
-  final T parent;
-  final double weight;
 }
 
 enum TraversalOrder {
