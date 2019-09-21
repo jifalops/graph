@@ -76,16 +76,28 @@ void main() {
       expect(g.twoColor().isBipartite, false);
     });
 
-    test('DFS', () {
-      final g = Graph<int>()
-        ..addEdge(0, 1)
-        ..addEdge(0, 2)
-        ..addEdge(0, 3)
-        ..addEdge(1, 4)
-        ..addEdge(3, 7)
-        ..addEdge(3, 5)
-        ..addEdge(1, 2);
-      expect(g.depthFirstSearch().visitedNodes, [0, 1, 4, 2, 3, 7, 5]);
+    /// Graph from https://en.wikipedia.org/wiki/Tree_traversal
+    final dfsOrder = Graph<String>()
+      ..addEdge('f', 'b')
+      ..addEdge('f', 'g')
+      ..addEdge('b', 'a')
+      ..addEdge('b', 'd')
+      ..addEdge('d', 'c')
+      ..addEdge('d', 'e')
+      ..addEdge('g', 'i')
+      ..addEdge('i', 'h');
+
+    test('DFS pre-order', () {
+      expect(dfsOrder.depthFirstSearch(order: Traversal.preOrder).visitedNodes,
+          'fbadcegih'.split(''));
+    });
+    test('DFS in-order', () {
+      expect(dfsOrder.depthFirstSearch(order: Traversal.inOrder).visitedNodes,
+          'abcdefghi'.split(''));
+    });
+    test('DFS post-order', () {
+      expect(dfsOrder.depthFirstSearch(order: Traversal.postOrder).visitedNodes,
+          'acedbhigf'.split(''));
     });
   });
 }
