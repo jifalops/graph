@@ -4,8 +4,8 @@
 library graph;
 
 import 'dart:collection';
-
 import 'package:meta/meta.dart';
+import 'package:quiver/collection.dart';
 
 export 'src/graph.dart';
 
@@ -33,13 +33,14 @@ abstract class AbsGraph<V, E> {
 
   bool addNode(V node);
   // bool addEdge(V from, E to);
+  bool removeEdge(V node, E edge);
 
   bool hasNode(V node);
   bool hasEdge(V from, E to);
 }
 
-class HashGraph<T> extends AbsGraph<T, T> {
-  HashGraph(
+class UnweightedGraph<T> extends AbsGraph<T, T> {
+  UnweightedGraph(
       {bool directed = false,
       EqualsFunction<T> equals,
       HashCodeFunction<T> hashCode})
@@ -89,6 +90,9 @@ class HashGraph<T> extends AbsGraph<T, T> {
     }
     return false;
   }
+
+  @override
+  bool removeEdge(T node, T edge) => _nodes[node]?.remove(edge);
 }
 
 class WeightedGraph<T> extends AbsGraph<T, WeightedEdge<T>> {
@@ -96,10 +100,12 @@ class WeightedGraph<T> extends AbsGraph<T, WeightedEdge<T>> {
       {bool directed = false,
       EqualsFunction<T> equals,
       HashCodeFunction<T> hashCode})
-      : _nodes = HashMap<T, SplayTreeSet<WeightedEdge<T>>>(
-            equals: equals, hashCode: hashCode),
+      : _nodes = HashMap(equals: equals, hashCode: hashCode),
         super(directed: directed, equals: equals, hashCode: hashCode);
-  final HashMap<T, SplayTreeSet<WeightedEdge<T>>> _nodes;
+
+  /// AVL has a relatively fast lookup time. I didn't like the fact that
+  /// [SplayTreeSet.contains()] performs a splay.
+  final HashMap<T, AvlTreeSet<WeightedEdge<T>>> _nodes;
 
   @override
   Iterable<T> get nodes => _nodes.keys;
@@ -107,19 +113,22 @@ class WeightedGraph<T> extends AbsGraph<T, WeightedEdge<T>> {
   @override
   Iterable<WeightedEdge<T>> edges(T node) => _nodes[node];
 
+  num get weightTotal => _weightTotal;
+  num _weightTotal = 0;
+
   // @override
   bool addEdge(T from, T to, [num weight = 1]) =>
-      _addEdge(from, to, weight, isDirected);
-  bool _addEdge(T from, T to, num weight, bool directed) {
-    final edge = WeightedEdge(to, weight);
+      addEdge2(from, WeightedEdge(to, weight), isDirected);
+  bool addEdge2(T from, WeightedEdge<T> edge, bool directed) {
     if (!hasEdge(from, edge)) {
       addNode(from);
-      addNode(to);
+      addNode(edge.node);
       _nodes[from].add(edge);
       if (directed) {
         _edgeCount++;
+        _weightTotal += edge.weight;
       } else {
-        _addEdge(to, from, weight, true);
+        addEdge2(edge.node, WeightedEdge(from, edge.weight), true);
       }
       return true;
     }
@@ -129,7 +138,7 @@ class WeightedGraph<T> extends AbsGraph<T, WeightedEdge<T>> {
   @override
   bool addNode(T node) {
     if (!hasNode(node)) {
-      _nodes[node] = SplayTreeSet<WeightedEdge<T>>();
+      _nodes[node] = AvlTreeSet<WeightedEdge<T>>();
       return true;
     }
     return false;
@@ -143,12 +152,15 @@ class WeightedGraph<T> extends AbsGraph<T, WeightedEdge<T>> {
 
   @override
   bool hasNode(T node) => _nodes.containsKey(node);
+
+  @override
+  bool removeEdge(T node, WeightedEdge<T> edge) => _nodes[node]?.remove(edge);
 }
 
 /// `operator==` and [hashCode] only consider the [node].
 /// [compareTo] only considers the [weight].
 class WeightedEdge<T> implements Comparable {
-  WeightedEdge(this.node, this.weight);
+  WeightedEdge(this.node, [this.weight = 1]);
 
   /// The node that this edge ends at.
   final T node;
@@ -166,3 +178,14 @@ class WeightedEdge<T> implements Comparable {
 
 typedef EqualsFunction<T> = bool Function(T, T);
 typedef HashCodeFunction<T> = int Function(T);
+
+enum TreeTraversal {
+  /// Process nodes in "top-first" or "discovered" order. (Node, Left, Right)
+  preOrder,
+
+  /// Process nodes in "minimum-first" or "sorted" order. (Left, Node, Right)
+  inOrder,
+
+  /// Process nodes in "bottom-first" order. (Left, Right, Node)
+  postOrder,
+}
